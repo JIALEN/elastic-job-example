@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:reg="http://www.dangdang.com/schema/ddframe/reg"
+       xmlns:job="http://www.dangdang.com/schema/ddframe/job"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+                        http://www.springframework.org/schema/beans/spring-beans.xsd 
+                        http://www.springframework.org/schema/context 
+                        http://www.springframework.org/schema/context/spring-context.xsd 
+                        http://www.dangdang.com/schema/ddframe/reg 
+                        http://www.dangdang.com/schema/ddframe/reg/reg.xsd 
+                        http://www.dangdang.com/schema/ddframe/job 
+                        http://www.dangdang.com/schema/ddframe/job/job.xsd 
+                        ">
+    <context:component-scan base-package="com.alen"/>
+    <context:property-placeholder location="classpath:conf/*.properties"/>
+
+    <bean id="elasticJobLog" class="org.apache.commons.dbcp.BasicDataSource" destroy-method="close">
+        <property name="driverClassName" value="${event.rdb.driver}"/>
+        <property name="url" value="${event.rdb.url}"/>
+        <property name="username" value="${event.rdb.username}"/>
+        <property name="password" value="${event.rdb.password}"/>
+    </bean>
+    <!--配置作业注册中心 -->
+    <reg:zookeeper id="regCenter" server-lists="${serverLists}" namespace="${namespace}"
+                   base-sleep-time-milliseconds="${baseSleepTimeMilliseconds}"
+                   max-sleep-time-milliseconds="${maxSleepTimeMilliseconds}" max-retries="${maxRetries}"/>
+
+    <!-- 配置简单作业-->
+    <!-- event-trace-rdb-data-source 配置带作业数据库事件追踪的简单作业-->
+    <job:simple id="${simple.id}"
+                class="${simple.class}"
+                registry-center-ref="regCenter"
+                sharding-total-count="${simple.shardingTotalCount}"
+                cron="${simple.cron}"
+                sharding-item-parameters="${simple.shardingItemParameters}"
+                monitor-execution="${simple.monitorExecution}"
+                monitor-port="${simple.monitorPort}"
+                failover="${simple.failover}"
+                description="${simple.description}"
+                disabled="${simple.disabled}"
+                overwrite="${simple.overwrite}"
+                job-sharding-strategy-class=""
+                event-trace-rdb-data-source="elasticJobLog"
+                job-parameter="${simple.job-parameter}"
+
+    />
+
+    <bean id="yourRefJobBeanId" class="com.alen.job.simple.MySimpleRefElasticJob">
+    </bean>
+
+    <!-- 配置关联Bean作业-->
+    <!--job-ref 	String 	否 		作业关联的beanId，该配置优先级大于class属性配置-->
+    <job:simple id="simpleRefElasticJob"
+                 job-ref="yourRefJobBeanId"
+                 registry-center-ref="regCenter"
+                 cron="${simple.cron}"
+                 sharding-total-count="${simple.shardingTotalCount}"
+                 sharding-item-parameters="${simple.shardingItemParameters}"
+     />
+
+    <!-- 配置数据流作业-->
+    <job:dataflow id="${dataflow.id}"
+                  class="${dataflow.class}"
+                  registry-center-ref="regCenter"
+                  sharding-total-count="${dataflow.shardingTotalCount}"
+                  cron="${dataflow.cron}"
+                  sharding-item-parameters="${dataflow.shardingItemParameters}"
+                  monitor-execution="${dataflow.monitorExecution}"
+                  failover="${dataflow.failover}"
+                  max-time-diff-seconds="${dataflow.maxTimeDiffSeconds}"
+                  streaming-process="${dataflow.streamingProcess}"
+                  description="${dataflow.description}"
+                  disabled="${dataflow.disabled}"
+                  overwrite="${dataflow.overwrite}"
+                  job-parameter="${dataflow.job-parameter}"
+    />
+
+    <!-- 配置脚本作业-->
+    <job:script id="${script.id}"
+                 registry-center-ref="regCenter"
+                 script-command-line="${script.scriptCommandLine}"
+                 sharding-total-count="${script.shardingTotalCount}"
+                 cron="${script.cron}"
+                 sharding-item-parameters="${script.shardingItemParameters}"
+                 description="${script.description}"
+                 overwrite="${script.overwrite}"
+     />
+
+    <!-- 配置带监听的简单作业-->
+    <!--    <job:simple id="listenerElasticJob"
+                    class="xxx.MySimpleListenerElasticJob"
+                    registry-center-ref="regCenter"
+                    cron="0/10 * * * * ?"
+                    sharding-total-count="3"
+                    sharding-item-parameters="0=A,1=B,2=C">
+            <job:listener class="xx.MySimpleJobListener"/>
+            <job:distributed-listener class="xx.MyOnceSimpleJobListener" started-timeout-milliseconds="1000"
+                                      completed-timeout-milliseconds="2000"/>
+        </job:simple>-->
+
+    <import resource="spring-mybatis.xml"/>
+</beans>
